@@ -178,7 +178,7 @@ excitatory_topological = {
   'weights': {
     'uniform': {
       'min': 0.0,
-      'max': 0.1
+      'max': 5.0
     }
   },
   'kernel': {
@@ -241,18 +241,18 @@ inhibitory_topolocical = {
 }
 
 # Area A to layer 4 of area W connectionso
-# tp.ConnectLayers(layers[0], layers[1], excitatory)
-# tp.ConnectLayers(layers[0], layers[2], excitatory)
+tp.ConnectLayers(layers[0], layers[1], excitatory_topological)
+tp.ConnectLayers(layers[0], layers[2], excitatory_topological)
 
 # Layer 4 Area W interconnections
-tp.ConnectLayers(layers[2], layers[1], inhibitory_delay_layerW)
+tp.ConnectLayers(layers[2], layers[1], inhibitory_layerW)
 tp.ConnectLayers(layers[1], layers[2], excitatory_layerW)
 tp.ConnectLayers(layers[1], layers[1], excitatory_layerW)
 # tp.ConnectLayers(layers[2], layers[2], inhibitory)
 
 # Layer 4 to layer 5/6 of Area W connections
-# tp.ConnectLayers(layers[1], layers[3], excitatory)
-# tp.ConnectLayers(layers[1], layers[3], inhibitory)
+tp.ConnectLayers(layers[1], layers[3], excitatory_layerW)
+tp.ConnectLayers(layers[1], layers[3], inhibitory_layerW)
 
 # Provide inputs
 nest.CopyModel('ac_generator', 'ac', {'amplitude': 200.0, 'frequency': 20.0})
@@ -287,20 +287,20 @@ spikes = tp.CreateLayer({
 
 # tp.PlotLayer(layers[2])
 
-tp.ConnectLayers(ac, layers[1], {'connection_type': 'divergent'})
-tp.ConnectLayers(ac, layers[2], {'connection_type': 'divergent'})
-tp.ConnectLayers(noise, layers[1], {'connection_type': 'divergent'})
-tp.ConnectLayers(noise, layers[2], {'connection_type': 'divergent'})
+tp.ConnectLayers(ac, layers[0], {'connection_type': 'divergent'})
+# tp.ConnectLayers(ac, layers[2], {'connection_type': 'divergent'})
+tp.ConnectLayers(noise, layers[0], {'connection_type': 'divergent'})
+# tp.ConnectLayers(noise, layers[2], {'connection_type': 'divergent'})
 
-# tp.ConnectLayers(layers[0], spikes, {'connection_type': 'convergent'})
+tp.ConnectLayers(layers[0], spikes, {'connection_type': 'convergent'})
 tp.ConnectLayers(layers[1], spikes, {'connection_type': 'convergent'})
 tp.ConnectLayers(layers[2], spikes, {'connection_type': 'convergent'})
-# tp.ConnectLayers(layers[3], spikes, {'connection_type': 'convergent'})
+tp.ConnectLayers(layers[3], spikes, {'connection_type': 'convergent'})
 
 nest.Simulate(simulation_time)
 
 spike_id = spikes[0]+1
 spike_ids = tuple([x for x in xrange(spike_id, spike_id+(spike_rows*spike_rows))])
-nest.raster_plot.from_device(spike_ids, hist=True)
+nest.raster_plot.from_device(spike_ids)
 pylab.show()
 
