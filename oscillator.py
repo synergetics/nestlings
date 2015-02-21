@@ -73,7 +73,7 @@ class OscillatingPopulation(object):
       },
       'allow_oversized_mask': True,
       'weights': {
-        'uniform': {'min': self._wt/2, 'max': self._wt}
+        'uniform': {'min': self._wt/2, 'max': self._wt*100000}
       },
       'delays': properties['delay']
     }
@@ -274,15 +274,15 @@ class OscillatingPopulation(object):
     for d in self._detectors:
       if d[2] == True:
         fro = d[0]
-        if d[1] == 'excitatory':
-          to = e
-        elif d[1] == 'inhibitory':
-          to = e
+        if d[1] == 'excitatory': to = e
+        elif d[1] == 'inhibitory': to = e
+        elif d[1] == 'excitatory interaction': to = ce
+        elif d[1] == 'inhibitory interaction': to = ci
       else:
-        if d[1] == 'excitatory':
-          fro = e
-        elif d[1] == 'inhibitory':
-          fro = e
+        if d[1] == 'excitatory': fro = e
+        elif d[1] == 'inhibitory': fro = e
+        elif d[1] == 'excitatory interaction': fro = ce
+        elif d[1] == 'inhibitory interaction': fro = ci
         to = d[0]
 
       tp.ConnectLayers(fro, to, {'connection_type': 'divergent'})
@@ -297,11 +297,11 @@ class OscillatingPopulation(object):
 
 p1 = OscillatingPopulation(1000, 5)
 p1.noise(500.0)
-p1.oscillate(300, 10)
+p1.oscillate(300, 100)
 
 # spike event detectors
-e1 = p1.detect('excitatory', 'spikes')
-i1 = p1.detect('inhibitory', 'spikes')
+# e1 = p1.detect('excitatory interaction', 'spikes')
+# i1 = p1.detect('inhibitory interaction', 'spikes')
 
 # membrane potential detectors
 # ev = p1.detect('excitatory', 'voltage')
@@ -314,8 +314,8 @@ p2.noise(500.0)
 p2.oscillate(300, 3)
 
 # spike event detectors
-e2 = p2.detect('excitatory', 'spikes')
-i2 = p2.detect('inhibitory', 'spikes')
+# e2 = p2.detect('excitatory interaction', 'spikes')
+# i2 = p2.detect('inhibitory interaction', 'spikes')
 
 # membrane potential detectors
 # ev = p2.detect('excitatory', 'voltage')
@@ -328,11 +328,11 @@ p2.connect(p1)
 
 nest.Simulate(600)
 
-p1.plot(e1, 'spikes')
-p1.plot(i1, 'spikes')
+# p1.plot(e1, 'spikes')
+# p1.plot(i1, 'spikes')
 
-p2.plot(e2, 'spikes')
-p2.plot(i2, 'spikes')
+# p2.plot(e2, 'spikes')
+# p2.plot(i2, 'spikes')
 
 # e_events = nest.GetStatus(e, 'events')
 # e_events = e_events[0]

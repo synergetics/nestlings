@@ -304,3 +304,18 @@ spike_ids = tuple([x for x in xrange(spike_id, spike_id+(spike_rows*spike_rows))
 nest.raster_plot.from_device(spike_ids)
 pylab.show()
 
+n1 = p1._e[0] + 1
+n1id = tuple([x for x in xrange(n1, int(n1+(p1._extent*p1._extent)))])
+n1c = nest.GetConnections(n1id)
+w1 = nest.GetStatus(n1c, 'weight')
+pylab.hist(w1, bins=100)
+pylab.show()
+
+n2 = p1._i[0] + 1
+n2id = tuple([x for x in xrange(n2, int(n2+(p1._extent*p1._extent)))])
+n2c = nest.GetConnections(n2id)
+w2 = nest.GetStatus(n2c, 'weight')
+pylab.hist(w2, bins=100)
+pylab.show()
+
+
