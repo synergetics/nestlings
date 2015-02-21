@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
-
 import sys
 sys.path.append('/opt/lib/python2.7/site-packages/')
 
 import math
 import numpy as np
-import pylab
+from pylab import plot, show
 import nest
 import nest.raster_plot
+import nest.voltage_trace
 import nest.topology as tp
 import uuid
 
@@ -45,36 +45,99 @@ class OscillatingPopulation(object):
     self._detectors = []
     self._oscillations = []
 
+    self._initialized = True
+    self._constructed = False
+
   def oscillate(self, amplitude, freq, time=0):
     self._oscillations.append([amplitude, freq])
 
   def noise(self, std_dev):
     self._noise = std_dev
 
-  def connect(self, connection):
-    pass
+  def _gen_props(self, properties, conn_type):
+    properties.setdefault('synapse_model', 'stdp_synapse')
+    properties.setdefault('probability', 0.1)
+    properties.setdefault('extent', 1.0/4.0)
+    properties.setdefault('delay', 100.0)
 
-  def detect(self, kind):
+    extent = properties['extent']*self._extent
+
+    p = {
+      'connection_type': 'divergent',
+      'synapse_model': properties['synapse_model'],
+      'kernel': {
+        'gaussian': { 'p_center': properties['probability'], 'sigma': extent }
+      },
+      'mask': {
+        'circular': {'radius': extent}
+      },
+      'allow_oversized_mask': True,
+      'weights': {
+        'uniform': {'min': self._wt/2, 'max': self._wt}
+      },
+      'delays': properties['delay']
+    }
+    return p
+
+  def connect(self, to, connection_type='', properties={}):
+    if not self._constructed:
+      raise StandardError('Call construct before connecting two networks')
+
+    if connection_type == 'excitatory to excitatory':
+      tp.ConnectLayers(self._ce, to._ce, self._gen_props(properties, 'e_e'))
+    elif connection_type == 'excitatory to inhibitory':
+      tp.ConnectLayers(self._ce, to._ci, self._gen_props(properties, 'e_i'))
+    elif connection_type == 'inhibitory to excitatory':
+      tp.ConnectLayers(self._ci, to._ce, self._gen_props(properties, 'i_e'))
+    elif connection_type == 'inhibitory to inhibitory':
+      tp.ConnectLayers(self._ci, to._ci, self._gen_props(properties, 'i_i'))
+    elif connection_type == '':
+      tp.ConnectLayers(self._ce, to._ce, self._gen_props(properties, 'e_e'))
+      tp.ConnectLayers(self._ce, to._ci, self._gen_props(properties, 'e_i'))
+      tp.ConnectLayers(self._ci, to._ce, self._gen_props(properties, 'i_e'))
+      tp.ConnectLayers(self._ci, to._ci, self._gen_props(properties, 'i_i'))
+    else:
+      raise ValueError('Connection type does not exist')
+
+  def detect(self, kind, what):
+    elements = None # the kind of detector device
+    reverse = False # does the detector needs to reverse the input and output?
+
+    if what == 'spikes':
+      elements = 'spike_detector'
+    elif what == 'voltage':
+      elements = 'voltmeter'
+      reverse = True
+    else:
+      raise ValueError('What to record from the population? ' + what + ' is not valid')
+
     detector = tp.CreateLayer({
       'rows': 1,
       'columns': 1,
-      'elements': 'spike_detector',
+      'elements': elements,
       'extent': [self._extent, self._extent]
     })
-    self._detectors.append([detector, kind])
+    self._detectors.append([detector, kind, reverse])
     return tuple([detector[0]+1])
 
-  def plot(self, detector):
-    nest.raster_plot.from_device(detector, hist=True)
-    pylab.show()
+  def plot(self, detector, kind):
+    if kind == 'spikes':
+      nest.raster_plot.from_device(detector, hist=True)
+      show()
+    elif kind == 'voltage':
+      nest.voltage_trace.from_device(detector)
+      show()
+    else:
+      raise ValueError('Wrong kind of detector specified')
 
   def construct(self):
-    nest.CopyModel('static_synapse', 'excitatory')
-    nest.CopyModel('static_synapse', 'inhibitory')
+    u = str(uuid.uuid4())
+    nest.CopyModel('stdp_synapse', 'excitatory'+u, {'Wmax': 1.0})
+    nest.CopyModel('stdp_synapse', 'inhibitory'+u, {'Wmax': -1.0})
 
     e_e = {
       'connection_type': 'divergent',
-      'synapse_model': 'excitatory',
+      'synapse_model': 'excitatory'+u,
       'weights': {
         'uniform': {
           'min': 0.0,
@@ -85,7 +148,7 @@ class OscillatingPopulation(object):
 
     e_i = {
       'connection_type': 'divergent',
-      'synapse_model': 'excitatory',
+      'synapse_model': 'excitatory'+u,
       'weights': {
         'uniform': {
           'min': 0.0,
@@ -96,7 +159,7 @@ class OscillatingPopulation(object):
 
     i_e = {
       'connection_type': 'divergent',
-      'synapse_model': 'excitatory',
+      'synapse_model': 'inhibitory'+u,
       'weights': {
         'uniform': {
           'min': 0.0,
@@ -107,7 +170,7 @@ class OscillatingPopulation(object):
 
     i_i = {
       'connection_type': 'divergent',
-      'synapse_model': 'excitatory',
+      'synapse_model': 'inhibitory'+u,
       'weights': {
         'uniform': {
           'min': 0.0,
@@ -116,12 +179,34 @@ class OscillatingPopulation(object):
       }
     }
 
-    nest.CopyModel(self._type, 'neuron', self._props)
+    e_ce = {
+      'connection_type': 'divergent',
+      'synapse_model': 'excitatory'+u,
+      'weights': {
+        'uniform': {
+          'min': 0.0,
+          'max': self._wt
+        }
+      }
+    }
+
+    i_ci = {
+      'connection_type': 'divergent',
+      'synapse_model': 'inhibitory'+u,
+      'weights': {
+        'uniform': {
+          'min': 0.0,
+          'max': self._wt*self._pop_ratio
+        }
+      }
+    }
+
+    nest.CopyModel(self._type, 'neuron'+u, self._props)
 
     e = tp.CreateLayer({
       'rows': int(self._rad_e),
       'columns': int(self._rad_e),
-      'elements': self._type,
+      'elements': 'neuron'+u,
       'extent': [self._extent, self._extent],
       'edge_wrap': True
     })
@@ -129,7 +214,23 @@ class OscillatingPopulation(object):
     i = tp.CreateLayer({
       'rows': int(self._rad_i),
       'columns': int(self._rad_i),
-      'elements': self._type,
+      'elements': 'neuron'+u,
+      'extent': [self._extent, self._extent],
+      'edge_wrap': True
+    })
+
+    ce = tp.CreateLayer({
+      'rows': int(self._rad_e/10),
+      'columns': int(self._rad_e/10),
+      'elements': 'neuron'+u,
+      'extent': [self._extent, self._extent],
+      'edge_wrap': True
+    })
+
+    ci = tp.CreateLayer({
+      'rows': int(self._rad_i/10),
+      'columns': int(self._rad_i/10),
+      'elements': 'neuron'+u,
       'extent': [self._extent, self._extent],
       'edge_wrap': True
     })
@@ -138,6 +239,10 @@ class OscillatingPopulation(object):
     tp.ConnectLayers(e, e, e_e)
     tp.ConnectLayers(i, e, i_e)
     tp.ConnectLayers(i, i, i_i)
+    tp.ConnectLayers(e, ce, e_ce)
+    tp.ConnectLayers(i, ci, i_ci)
+    tp.ConnectLayers(ce, e, e_ce)
+    tp.ConnectLayers(ci, i, i_ci)
 
     # Create and connect oscillating inputs
     for os in self._oscillations:
@@ -155,11 +260,11 @@ class OscillatingPopulation(object):
       tp.ConnectLayers(ac, i, {'connection_type': 'divergent'})
 
     # Create and connect stochastic noise generators
-    nest.CopyModel('noise_generator', 'noises', {'mean': 0.0, 'std': self._noise})
+    nest.CopyModel('noise_generator', 'noises'+u, {'mean': 0.0, 'std': self._noise})
     noise = tp.CreateLayer({
       'rows': 1,
       'columns': 1,
-      'elements': 'noises',
+      'elements': 'noises'+u,
       'extent': [self._extent, self._extent]
     })
 
@@ -167,24 +272,76 @@ class OscillatingPopulation(object):
     tp.ConnectLayers(noise, i, {'connection_type': 'divergent'})
 
     for d in self._detectors:
-      if d[1] == 'excitatory':
-        tp.ConnectLayers(e, d[0], {'connection_type': 'divergent'})
-      elif d[1] == 'inhibitory':
-        tp.ConnectLayers(i, d[0], {'connection_type': 'divergent'})
+      if d[2] == True:
+        fro = d[0]
+        if d[1] == 'excitatory':
+          to = e
+        elif d[1] == 'inhibitory':
+          to = e
       else:
-        raise ValueError("Kind specified s wrong, such kind of neurons dont exist here.")
+        if d[1] == 'excitatory':
+          fro = e
+        elif d[1] == 'inhibitory':
+          fro = e
+        to = d[0]
+
+      tp.ConnectLayers(fro, to, {'connection_type': 'divergent'})
 
     self._e = e
     self._i = i
+    self._ce = ce
+    self._ci = ci
+    self._constructed = True
 
 
-p = OscillatingPopulation(1000, 5)
-p.oscillate(1000, 35)
-e = p.detect('excitatory')
-i = p.detect('inhibitory')
-p.construct()
 
-nest.Simulate(1000)
+p1 = OscillatingPopulation(1000, 5)
+p1.noise(500.0)
+p1.oscillate(300, 10)
 
-p.plot(e)
-p.plot(i)
+# spike event detectors
+e1 = p1.detect('excitatory', 'spikes')
+i1 = p1.detect('inhibitory', 'spikes')
+
+# membrane potential detectors
+# ev = p1.detect('excitatory', 'voltage')
+# iv = p1.detect('inhibitory', 'voltage')
+
+p1.construct()
+
+p2 = OscillatingPopulation(1000, 5)
+p2.noise(500.0)
+p2.oscillate(300, 3)
+
+# spike event detectors
+e2 = p2.detect('excitatory', 'spikes')
+i2 = p2.detect('inhibitory', 'spikes')
+
+# membrane potential detectors
+# ev = p2.detect('excitatory', 'voltage')
+# iv = p2.detect('inhibitory', 'voltage')
+
+p2.construct()
+
+p1.connect(p2)
+p2.connect(p1)
+
+nest.Simulate(600)
+
+p1.plot(e1, 'spikes')
+p1.plot(i1, 'spikes')
+
+p2.plot(e2, 'spikes')
+p2.plot(i2, 'spikes')
+
+# e_events = nest.GetStatus(e, 'events')
+# e_events = e_events[0]
+# print type(e_events['times'])
+
+
+# i_events = nest.GetStatus(i, 'events')
+# i_events = i_events[0]
+
+# p.plot(ev, 'voltage')
+# p.plot(iv, 'voltage')
+
