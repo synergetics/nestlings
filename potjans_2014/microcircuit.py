@@ -11,6 +11,9 @@ import nest.raster_plot
 import nest.topology as tp
 import logging as log
 
+import network_params
+import sim_params
+import user_params
 
 # Implementation of the multi-layered local cortical network model by
 
@@ -359,11 +362,49 @@ def ConnectNetworkNodes():
 
           nest.Connect(source_nodes, target_nodes, conn_dict, syn_dict)
 
+      # Connect devices
+      % record from a continuous range of IDs
+      % (appropriate for networks without topology)
+      nest.Connect(target_nodes[n_neurons_rec_spikes[target_layer][target_pop]],
+        spike_detector_GIDs[target_layer][target_pop],
+        'all_to_all')
+
+      nest.Connect(voltmeter_GIDs[target_layer][target_pop],
+        target_nodes[n_neurons_rec_voltage[target_layer][target_pop]],
+        'all_to_all')
+
+      nest.Connect(poisson_GIDs[target_layer][target_pop],
+        target_nodes,
+        'all_to_all',
+        {'weight': PSC_ext, 'delay': delays[0]})
+
+      nest.Connect(dc_GIDs[target_layer][target_pop],
+        target_nodes,
+        'all_to_all')
+
+  if n_thal > 0:
+    % Connect thalamic poisson_generator to thalamic neurons (parrots)
+    nest.Connect(th_poisson_GID, nest.GetGlobalNodes(th_neuron_subnet_GID))
+
+  if record_thalamic_spikes and n_thal > 0:
+    % Connect thalamic neurons to spike detector
+    nest.Connect(nest.GetGlobalNodes(th_neuron_subnet_GID), th_spike_detector_GID)
 
 
+if __name__ == '__main__':
+  print "------------------------------------------------------"
+  print "Starting simulation"
+  print "------------------------------------------------------"
 
+  CheckParameters()
 
+  PrepareSimulation()
 
+  DerivedParameters()
 
+  CreateNetworkNodes()
 
+  WriteGIDstoFile()
+
+  ConnectNetworkNodes()
 
