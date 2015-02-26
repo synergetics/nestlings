@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+from sim_params import *
+
 if run_mode == 'production':
   # absolute path to which the output files should be written
   output_path = '.'

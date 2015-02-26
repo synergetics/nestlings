@@ -1,16 +1,6 @@
 # !/usr/bin/env python
 
-import sys
-sys.path.append('/opt/lib/python2.7/site-packages/')
-
-import math
 import numpy as np
-import pylab
-import nest
-import nest.raster_plot
-import nest.topology as tp
-import logging as log
-
 
 # Contains:
 # - network parameters
@@ -32,7 +22,7 @@ preserve_K = True
 
 layers = ['L23', 'L4', 'L5', 'L6']
 
-full_scale_n_neurons = np.array([[20683,  #  layer 2/3 e
+full_scale_n_neurons = np.array([[20683,   #  layer 2/3 e
                                   5834],   #  layer 2/3 i
                                  [21915,   #  layer 4 e
                                   5479],   #  layer 4 i
@@ -55,28 +45,28 @@ g = -4.
 
 # probabilities for >=1 connection between neurons in the given populations
 # columns correspond to source populations; rows to target populations
-# source      2/3e    2/3i    4e      4i      5e      5i      6e      6i
+# source                2/3e      2/3i      4e       4i      5e       5i        6e      6i
 conn_probs = np.array([[0.1009,  0.1689,  0.0437,  0.0818,  0.0323,  0.,      0.0076,  0.    ],
-                      [0.1346,  0.1371,  0.0316,  0.0515,  0.0755,  0.,      0.0042,  0.    ],
-                      [0.0077,  0.0059,  0.0497,  0.135,   0.0067,  0.0003,  0.0453,  0.    ],
-                      [0.0691,  0.0029,  0.0794,  0.1597,  0.0033,  0.,      0.1057,  0.    ],
-                      [0.1004,  0.0622,  0.0505,  0.0057,  0.0831,  0.3726,  0.0204,  0.    ],
-                      [0.0548,  0.0269,  0.0257,  0.0022,  0.06,    0.3158,  0.0086,  0.    ],
-                      [0.0156,  0.0066,  0.0211,  0.0166,  0.0572,  0.0197,  0.0396,  0.2252],
-                      [0.0364,  0.001,   0.0034,  0.0005,  0.0277,  0.008,   0.0658,  0.1443]]
+                       [0.1346,  0.1371,  0.0316,  0.0515,  0.0755,  0.,      0.0042,  0.    ],
+                       [0.0077,  0.0059,  0.0497,  0.135,   0.0067,  0.0003,  0.0453,  0.    ],
+                       [0.0691,  0.0029,  0.0794,  0.1597,  0.0033,  0.,      0.1057,  0.    ],
+                       [0.1004,  0.0622,  0.0505,  0.0057,  0.0831,  0.3726,  0.0204,  0.    ],
+                       [0.0548,  0.0269,  0.0257,  0.0022,  0.06,    0.3158,  0.0086,  0.    ],
+                       [0.0156,  0.0066,  0.0211,  0.0166,  0.0572,  0.0197,  0.0396,  0.2252],
+                       [0.0364,  0.001,   0.0034,  0.0005,  0.0277,  0.008,   0.0658,  0.1443]]
                       )
 
 # mean dendritic delays for excitatory and inhibitory transmission (ms)
-delays = [1.5, 0.75]
+delays = np.array([1.5, 0.75])
 # standard deviation relative to mean delays
 delay_rel_sd = 0.5
 # connection pattern used in connection calls connecting populations
 conn_dict = {'rule': 'fixed_total_number'}
 # weight distribution of connections between populations
-weight_dict_exc = {'distribution': {'normal_clipped': {'low': 0.0}}}
-weight_dict_inh = {'distribution': {'normal_clipped': {'high': 0.0}}}
+weight_dict_exc = {'distribution': 'normal_clipped', 'low': 0.0}
+weight_dict_inh = {'distribution': 'normal_clipped', 'high': 0.0}
 # delay distribution of connections between populations
-delay_dict {'distribution': {'normal_clipped': {'low': 0.1}}}
+delay_dict = {'distribution': 'normal_clipped', 'low': 0.1}
 # default synapse dictionary
 syn_dict = {'model': 'static_synapse'}
 
@@ -129,7 +119,7 @@ K_bg = np.array([[1600,  # 2/3e
 # For producing Potjans & Diesmann (2012) Fig. 10, n_thal=902 was used.
 # Note that the thalamic rate here reproduces the simulation results
 # shown in the paper, and differs from the rate given in the text.
-n_thal = 0          # size of thalamic population
+n_thal = 0.          # size of thalamic population
 th_start = 700.     # onset of thalamic input (ms)
 th_duration = 10.   # duration of thalamic input (ms)
 th_rate = 120.      # rate of thalamic neurons (spikes/s)
