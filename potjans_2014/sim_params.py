@@ -26,7 +26,7 @@ master_seed = 123456    # changes rng_seeds and grng_seed
 
 n_mpi_procs = 1             # number of MPI processes
 
-n_threads_per_proc = 2      # number of threads per MPI process
+n_threads_per_proc = 8      # number of threads per MPI process
                             # use for instance 24 for a full-scale simulation
 
 
@@ -81,13 +81,13 @@ save_thalamic_spikes =  True
 GID_filename =  'population_GIDs.dat'
 
 # stem for spike detector file labels
-spike_detector_label =  'spikes_'
+spike_detector_label =  'spikes'
 
 # stem for voltmeter file labels
-voltmeter_label =  'voltages_'
+voltmeter_label =  'voltages'
 
 # stem for thalamic spike detector file labels
-th_spike_detector_label =  'th_spikes_'
+th_spike_detector_label =  'th_spikes'
 
 # file name for standard output
 std_out =  'output.txt'

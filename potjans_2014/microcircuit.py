@@ -245,14 +245,14 @@ def CreateNetworkNodes():
       # Set spike detector label for filenames. The GID of the spike
       # detector and the process number are appended automatically.
       nest.SetStatus(this_spike_detector, {
-        'label': spike_detector_label + '_' + str(layer_index) + '_' + str(population_index) + '.cvs',
+        'label': spike_detector_label + '_' + str(layer_index) + '_' + str(population_index),
         'to_file': save_cortical_spikes
       })
       spike_detector_GIDs[layer_index][population_index] = this_spike_detector
 
       this_voltmeter = nest.Create('voltmeter')
       nest.SetStatus(this_voltmeter, {
-        'label': voltmeter_label + '_' + str(layer_index) + '_' + str(population_index) + '.cvs',
+        'label': voltmeter_label + '_' + str(layer_index) + '_' + str(population_index),
         'to_file': save_voltages
       })
       voltmeter_GIDs[layer_index][population_index] = this_voltmeter
@@ -299,17 +299,18 @@ def CreateNetworkNodes():
 
 
 def WriteGIDstoFile():
-  pass
-  # if run_mode == 'test':
-  #   f = GID_filename
+  if run_mode == 'test':
+    f = GID_filename
 
-  # if run_mode == 'production':
-  #   f = output_path + '/' + GID_filename
+  if run_mode == 'production':
+    f = output_path + '/' + GID_filename
 
-  # with open(f, 'w') as f:
-  #   pass
-  #   close(f)
+  with open(f, 'w') as f:
+    for n in neuron_subnet_GIDs.flatten():
+      GIDs = nest.GetNodes((n,))
+      f.write(str(min(GIDs[0])) + '\t' + str(max(GIDs[0])) + '\n')
 
+    f.close()
 
 
 def ConnectNetworkNodes():
@@ -474,3 +475,8 @@ if __name__ == '__main__':
 
   ConnectNetworkNodes()
 
+  nest.Simulate(t_sim)
+
+  # for s in np.array(spike_detector_GIDs).flatten():
+  #   nest.raster_plot.from_device((s,))
+  #   pylab.show()
