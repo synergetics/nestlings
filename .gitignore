@@ -55,5 +55,5 @@ target/
 
 .ipynb_checkpoints/
 
-.dat
-.gdf
+*.dat
+*.gdf
