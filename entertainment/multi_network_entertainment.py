@@ -16,7 +16,7 @@ import ggplot
 nest.ResetKernel()
 nest.SetKernelStatus({'local_num_threads': 8})
 
-nr_populations = 2
+nr_populations = 4
 neuron_model = 'iaf_psc_exp'
 
 model_params = {'tau_m': 10.,        # membrane time constant (ms)
@@ -31,15 +31,15 @@ model_params = {'tau_m': 10.,        # membrane time constant (ms)
 
 input_rate = 100.
 input_degrees = []
-input_delays = [1.5, 0.75]
 input_weights = 7.
-frequencies = [11., 27.]
+input_delays = [1.5, 0.75, 1.5, 0.75]
+frequencies = [11., 27., 13., 17.]
 
 populations = np.random.normal(100, 10, nr_populations)
 # for p in populations:
 #   input_degrees.append(np.abs(np.random.normal(p, p/10.)))
 
-input_degrees = [50., 50.]
+input_degrees = [50., 50., 50., 50.]
 
 print input_degrees
 
@@ -82,37 +82,6 @@ for ctr in xrange(len(populations)):
 # connect the nodes
 prev_pop = None
 for ctr in xrange(len(populations)):
-  if ctr < (len(populations)-1):
-    prev_pop = neurons[ctr+1]
-  elif len(populations) == 1:
-    prev_pop = neurons[ctr]
-  else:
-    prev_pop = neurons[ctr-1]
-
-  conn_dict = {
-    'rule': 'fixed_total_number',
-    'N': populations[ctr]*100
-  }
-
-  syn_dict = {
-    # 'delay': {
-    #   'mu': 1.5,
-    #   'distribution': 'normal_clipped',
-    #   'sigma': 0.75,
-    #   'low': 0.1
-    # },
-    'delay': 1.5,
-    'model': 'stdp_synapse',
-    'weight': {
-      'distribution': 'normal_clipped',
-      'mu': 10.,
-      'sigma': 1.,
-      'low': 0.0
-    }
-  }
-
-  nest.Connect(neurons[ctr], prev_pop, conn_dict, syn_dict)
-
   nest.Connect(inputs[ctr], neurons[ctr], 'all_to_all',
     {'weight': input_weights, 'delay': input_delays[0]})
 
@@ -126,8 +95,53 @@ for ctr in xrange(len(populations)):
 
 nest.Simulate(1000)
 
+
+nest.CopyModel('stdp_synapse', 'stdp_synapse_ceil', {'Wmax': 20.})
+for ctr in xrange(len(populations)):
+  conn_dict = {
+    'rule': 'fixed_total_number',
+    'N': populations[ctr]*100
+  }
+
+  syn_dict = {
+    # 'delay': {
+    #   'distribution': 'normal_clipped',
+    #   'mu': 1.5,
+    #   'sigma': 0.75,
+    #   'low': 0.1
+    # },
+    'delay': 1.5,
+    'model': 'stdp_synapse_ceil',
+    'weight': {
+      'distribution': 'normal_clipped',
+      'mu': 4.,
+      'sigma': 1.,
+      'low': 0.0
+    }
+  }
+
+  for target in xrange(len(populations)):
+    if ctr != target:
+      nest.Connect(neurons[ctr], neurons[target], conn_dict, syn_dict)
+
+
+nest.Simulate(1000)
+
+
+for source in xrange(len(populations)):
+  for target in xrange(len(populations)):
+    if source != target:
+      n = nest.GetConnections(neurons[source], neurons[target])
+      w = nest.GetStatus(n, 'weight')
+
+      pylab.hist(w, bins=100, alpha=0.5, label=str(source) + '->' + str(target) + ': ' + str(np.mean(w)))
+      pylab.legend(loc='upper right')
+      pylab.savefig('stdp_weights_histogram.png')
+
+
 # for sp in spikes:
 nest.raster_plot.from_device(spikes[0], hist=True)
+pylab.savefig('spikes.png')
 
 # for v in voltmeters:
   # pylab.figure()
